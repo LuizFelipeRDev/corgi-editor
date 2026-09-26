@@ -1,6 +1,6 @@
 import { SUBTITLE_STYLES, SUBTITLE_POSITIONS, hasPopEffect } from '../lib/subtitleStyles'
 import { parseSrtTimeToSecondsExport } from '../lib/subtitleRender'
-import { SUBTITLE_DISPLAY_DEFAULTS, getPreviewFontSize, SUBTITLE_HIGHLIGHT_BOX } from '../global_config/subtitleConfig'
+import { SUBTITLE_DISPLAY_DEFAULTS, getPreviewFontSize, SUBTITLE_HIGHLIGHT_BOX, SUBTITLE_POPLINE_BOX } from '../global_config/subtitleConfig'
 import { FONTS } from '../global_config/fonts'
 
 function hashString(str) {
@@ -86,6 +86,13 @@ const fontFamily = FONTS.find(f => f.id === fontId)?.family || `'${fontId}', san
 
   const previewFontSize = getPreviewFontSize(configFontSize, fullscreen)
 
+  // POPLINE pede "borda um pouquinho grossa" nas letras: o contorno do
+  // preview acompanha o outlineSize do estilo (5.0) em vez do fixo (2,4)
+  // que os demais estilos usam - no export o \\bord ja sai pelo estilo.
+  const outlineShadow = animType === 'popline'
+    ? `0 0 ${stylePreset.outlineSize * 0.5}px ${stylePreset.outlineColor}, 0 0 ${stylePreset.outlineSize}px ${stylePreset.outlineColor}`
+    : `0 0 2px ${stylePreset.outlineColor}, 0 0 4px ${stylePreset.outlineColor}`
+
   const blockStyle = {
     fontFamily,
     fontSize: `${previewFontSize}px`,
@@ -96,7 +103,7 @@ const fontFamily = FONTS.find(f => f.id === fontId)?.family || `'${fontId}', san
     lineHeight: 1.3,
     whiteSpace: 'pre-line',
     textTransform: 'uppercase',
-    textShadow: `0 0 2px ${stylePreset.outlineColor}, 0 0 4px ${stylePreset.outlineColor}`,
+    textShadow: outlineShadow,
     maxWidth: isPortrait ? '90%' : '85%',
     wordBreak: 'break-word',
     ...(isPortrait ? { padding: '0 3%' } : {}),
@@ -107,6 +114,43 @@ const fontFamily = FONTS.find(f => f.id === fontId)?.family || `'${fontId}', san
   const words = activeSub.words && activeSub.words.length > 0
     ? activeSub.words
     : activeSub.text.split(/\s+/).map(w => ({ text: w }))
+
+  const isWordActive = (word) => {
+    if (!word.start || !word.end) return false
+    const s = parseSrtTimeToSecondsExport(word.start)
+    const e = parseSrtTimeToSecondsExport(word.end)
+    return s !== null && e !== null && now >= s && now < e
+  }
+
+  // POPLINE: geometria da faixa fina na base da palavra (referencia
+  // popline.png/md). A baseline dentro da caixa de linha (lineHeight 1.3
+  // do bloco) sai da metrica da propria fonte no canvas: metade do
+  // leading + ascent - o mesmo resultado do layout CSS do navegador.
+  const popBand = (() => {
+    if (animType !== 'popline') return null
+    const fs = previewFontSize
+    const lineH = fs * 1.3
+    let asc = fs * 1.0
+    let desc = fs * 0.3
+    try {
+      const ctx = document.createElement('canvas').getContext('2d')
+      ctx.font = `${stylePreset.italic ? 'italic ' : ''}${stylePreset.bold ? '700' : '400'} ${fs}px ${fontFamily}`
+      const m = ctx.measureText('H')
+      if (m.fontBoundingBoxAscent) {
+        asc = m.fontBoundingBoxAscent
+        desc = m.fontBoundingBoxDescent
+      }
+    } catch (e) { /* sem canvas: aproximacao acima */ }
+    const baseline = (lineH - (asc + desc)) / 2 + asc
+    // top/height fracionarios: sem arredondamento a faixa bate a baseline
+    // exatamente igual ao export (que arredonda so no ASS, +-0.5px em fs105).
+    return {
+      // do TOPO da caixa de linha ate o topo da faixa
+      top: baseline - fs * SUBTITLE_POPLINE_BOX.bandTopRatio,
+      height: fs * SUBTITLE_POPLINE_BOX.bandHeightRatio,
+      radius: Math.max(1, Math.round(fs * SUBTITLE_POPLINE_BOX.bandHeightRatio * SUBTITLE_POPLINE_BOX.borderRadiusRatio)),
+    }
+  })()
 
   const getWordStyle = (word, i) => {
     const wordStart = word.start ? parseSrtTimeToSecondsExport(word.start) : null
@@ -179,6 +223,24 @@ const fontFamily = FONTS.find(f => f.id === fontId)?.family || `'${fontId}', san
           margin: isActive ? `-${padY}px -${padX}px` : '0',
         }
       }
+
+      case 'popline': {
+        // POPLINE: faixa fina na BASE da palavra ("quase uma linha",
+        // cantos levemente arredondados - referencia popline.png/md)
+        // em vez de caixa envolvendo. A faixa e um filho posicionado
+        // dentro do span (largura = palavra, z-index -1 atras das
+        // letras - renderizado no JSX) e o pop anima o span inteiro =>
+        // faixa e palavra escalam JUNTAS, centradas no meio da palavra
+        // (transform-origin padrao), igual ao \org compartilhado do export.
+        const isActive = isWordActive(word)
+        return {
+          ...base,
+          display: 'inline-block',
+          position: 'relative',
+          color: primaryColor,
+          animation: isActive && popOn ? `subtitle-popline ${popDur}s ease-out` : 'none',
+        }
+      }
     }
   }
 
@@ -195,7 +257,24 @@ const fontFamily = FONTS.find(f => f.id === fontId)?.family || `'${fontId}', san
             const isLineEnd = (i + 1) % wpl === 0 && !isLast
             return (
               <span key={i}>
-                <span style={getWordStyle(word, i)}>{word.text}</span>
+                <span style={getWordStyle(word, i)}>
+                  {popBand && isWordActive(word) && (
+                    <span
+                      aria-hidden="true"
+                      style={{
+                        position: 'absolute',
+                        left: 0,
+                        right: 0,
+                        top: `${popBand.top}px`,
+                        height: `${popBand.height}px`,
+                        background: highlightColor,
+                        borderRadius: `${popBand.radius}px`,
+                        zIndex: -1,
+                      }}
+                    />
+                  )}
+                  {word.text}
+                </span>
                 {isLast ? '' : isLineEnd ? '\n' : ' '}
               </span>
             )

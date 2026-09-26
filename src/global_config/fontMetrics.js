@@ -37,6 +37,42 @@ export const FONT_RENDER_SCALE = {
 // Fallback para fontes fora da lista (estilos com familia propria).
 export const DEFAULT_RENDER_SCALE = 0.72
 
+// Posicao da baseline dentro da caixa de linha do libass (gerado - nao
+// editar a mao):
+//
+//   asc = usWinAscent / (usWinAscent + usWinDescent)
+//
+// O libass normaliza asc+desc para 1.0 x tamanho nominal (ver acima), e a
+// baseline fica em asc x tamanho a partir do TOPO da linha - usado pelo
+// POPLINE para posicionar a faixa em cima da baseline no export.
+// Validado: Montserrat 1109/1379 = 0.8042 bate com a baseline medida por
+// sonda (y=1019 para topo de linha y=935, size=105 => 0.8043).
+export const FONT_WIN_ASCENT = {
+  'Montserrat ExtraBold': 0.8042, // 1109/(1109+270)
+  'Bebas Neue': 0.7308, // 950/(950+350)
+  'Bangers': 0.7974, // 1401/(1401+356)
+  'Lilita One': 0.8075, // 923/(923+220)
+  'Komika Axis': 0.8440, // 1380/(1380+255)
+  'IBM Plex Sans': 0.8029, // 1120/(1120+275)
+  'Anton': 0.8101, // 2876/(2876+674)
+  'Archivo Black': 0.7684, // 1035/(1035+312)
+  'Poppins ExtraBold': 0.6442, // 1135/(1135+627)
+  'Rubik ExtraBold': 0.6958, // 1066/(1066+466)
+  'Roboto Black': 0.7917, // 1946/(1946+512)
+  'Oswald': 0.7785, // 1325/(1325+377)
+  'Inter': 0.7747, // 2269/(2269+660)
+  'Fira Sans Condensed': 0.7792, // 935/(935+265)
+  'Luckiest Guy': 0.7992, // 2006/(2006+504)
+  'Titan One': 0.8472, // 970/(970+175)
+}
+
+// Fallback para fontes fora da lista (estilos com familia propria).
+export const DEFAULT_WIN_ASCENT = 0.79
+
 export function getFontRenderScale(assFontName) {
   return FONT_RENDER_SCALE[assFontName] ?? DEFAULT_RENDER_SCALE
+}
+
+export function getFontWinAscent(assFontName) {
+  return FONT_WIN_ASCENT[assFontName] ?? DEFAULT_WIN_ASCENT
 }

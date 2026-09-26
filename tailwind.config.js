@@ -6,20 +6,24 @@ export default {
   ],
   theme: {
     extend: {
+      // Tokens de tema: os valores vivem em CSS variables (--c-*) definidas em
+      // src/index.css. :root = retro (padrao, valores originais) e
+      // [data-theme='modern'] = modern. <alpha-value> mantem funcionando os
+      // modificadores de opacidade (ex.: text-retro-black/60).
       colors: {
         retro: {
-          bg: '#b5dff5',
-          box: '#f5f0d0',
-          black: '#1a1a1a',
-          accent: '#2d8cf0',
+          bg: 'rgb(var(--c-bg) / <alpha-value>)',
+          box: 'rgb(var(--c-box) / <alpha-value>)',
+          black: 'rgb(var(--c-ink) / <alpha-value>)',
+          accent: 'rgb(var(--c-accent) / <alpha-value>)',
         }
       },
       fontFamily: {
-        pixel: ['"Press Start 2P"', 'monospace'],
+        pixel: ['var(--font-ui)'],
       },
       boxShadow: {
-        retro: '4px 4px 0px #1a1a1a',
-        'retro-sm': '2px 2px 0px #1a1a1a',
+        retro: 'var(--shadow-1)',
+        'retro-sm': 'var(--shadow-2)',
       }
     },
   },

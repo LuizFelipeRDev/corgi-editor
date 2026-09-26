@@ -25,10 +25,14 @@
  *   'scale'        = escala na PALAVRA ativa (pop por palavra)
  *   'wordpop'      = animacao de pop na PALAVRA ativa
  *   'highlightbox' = caixa de fundo na PALAVRA ativa (sem pop)
+ *   'popline'      = faixa fina na BASE da PALAVRA ativa + pop (faixa e
+ *                    palavra escalam juntos ao redor do centro da palavra)
  *
  * O raio dos cantos e o padding da caixa do 'highlightbox' sao
  * controlados centralmente em global_config/subtitleConfig.js
- * (SUBTITLE_HIGHLIGHT_BOX), valendo para preview, fullscreen e export.
+ * (SUBTITLE_HIGHLIGHT_BOX) e os da faixa do 'popline' em
+ * SUBTITLE_POPLINE_BOX (altura/topo relativos a baseline da linha),
+ * valendo para preview, fullscreen e export.
  *
  * Para adicionar um novo estilo com pop, basta definir:
  *   animationType + popIntensity + popDuration + popSize
@@ -196,6 +200,32 @@ export const SUBTITLE_STYLES = {
     popDuration: 0,
     popSize: 0,
     bestFor: 'Viral & trending content',
+  },
+  popline: {
+    id: 'popline',
+    name: 'Popline',
+    fontFamily: 'Montserrat, sans-serif',
+    fontNameFallback: 'IBM Plex Sans, sans-serif',
+    fontSize: 105,
+    primaryColor: '#FFFFFF',
+    highlightColor: '#9B30FF',
+    outlineColor: '#000000',
+    shadowColor: '#000000',
+    shadowAlpha: 128,
+    outlineSize: 5.0,
+    shadowDepth: 3.0,
+    bold: true,
+    italic: false,
+    letterSpacing: 0,
+    wordSpacing: 100,
+    // Caixa colada na palavra ativa (sem folga horizontal, 20% vertical)
+    // + pop sincronizado: caixa e palavra escalam JUNTOS ao redor do
+    // centro da palavra (ver cases 'popline' no preview e export).
+    animationType: 'popline',
+    popIntensity: 1,
+    popDuration: 0.10,
+    popSize: 15,
+    bestFor: 'Pop & viral content',
   },
 }
 

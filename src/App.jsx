@@ -14,8 +14,10 @@ import Waveform from './components/Waveform'
 import { generateAssContent, groupWordsIntoSegments, parsePremiereXml, remapSubtitleTimestamps, ensureExportFontLoaded } from './lib/subtitleRender'
 import { WINDOW_SUBTITLES_WIDTH, WINDOW_NO_SUBTITLES_WIDTH, WINDOW_DEFAULT_HEIGHT } from './global_config/window'
 import { SUBTITLE_DISPLAY_DEFAULTS } from './global_config/subtitleConfig'
+import { useLang } from './lib/i18n'
 
 function App() {
+  const { t, lang } = useLang()
   const [selectedFile, setSelectedFile] = useState(null)
   const [outputFolder, setOutputFolder] = useState('')
   const [outputFormat, setOutputFormat] = useState('mp3')
@@ -112,7 +114,7 @@ function App() {
       if (ok) {
         setProgress({ pct: 100, text: '100%' })
       } else {
-        setProgress({ pct: 0, text: 'ERRO' })
+        setProgress({ pct: 0, text: t('common.error') })
         if (errorBuffer.current.trim()) {
           setErrorMessage(errorBuffer.current.trim())
           setShowError(true)
@@ -133,7 +135,7 @@ function App() {
     window.api.onWhisperDone((ok) => {
       setGeneratingSubtitles(false)
       if (!ok) {
-        setErrorMessage('Erro ao gerar legendas')
+        setErrorMessage(t('app.errGenerate'))
         setShowError(true)
       }
     })
@@ -158,7 +160,7 @@ function App() {
       }
       setGeneratingSubtitles(false)
       if (!ok) {
-        setErrorMessage('Erro ao gerar legendas com whisper.cpp')
+        setErrorMessage(t('app.errGenerateWhisper'))
         setShowError(true)
       }
     })
@@ -192,7 +194,7 @@ function App() {
 
     window.api.onFfmpegDone((ok) => {
       if (!ok) {
-        setErrorMessage('Erro ao renderizar legendas')
+        setErrorMessage(t('app.errRender'))
         setShowError(true)
       }
     })
@@ -212,11 +214,12 @@ function App() {
   }, [subtitlesEnabled])
 
   const handleExport = async () => {
-    if (!selectedFile || processing) return
-    if (videoRef.current) {
-      videoRef.current.pause()
-      if (waveSurferRef?.current) waveSurferRef.current.pause()
-    }
+    if (!selectedFile || processing || generatingSubtitles) return
+    // Player para imediatamente ao iniciar a exportacao — video e wavesurfer
+    // pausados INDEPENDENTES (em arquivo de audio nao existe videoRef, e o
+    // wavesurfer precisa parar tambem)
+    if (videoRef.current) videoRef.current.pause()
+    if (waveSurferRef?.current) waveSurferRef.current.pause()
     exportingRef.current = true
     setProcessing(true)
     errorBuffer.current = ''
@@ -230,11 +233,18 @@ function App() {
     const shouldBurn = burnSubtitles && hasSubtitles
     const videoExts = ['mp4', 'mkv', 'mov', 'webm', 'avi']
     const isVideoInput = videoExts.includes(inputExt)
-    const needsVideo = greenScreen || shouldBurn || !isVideoInput
-    const finalFormat = needsVideo ? 'mp4' : outputFormat
+    // O formato escolhido no Config e quem manda no container de saida: o
+    // pipeline de video so roda quando a saida E video. Green screen e queima
+    // de legenda so fazem sentido em saida de video (o SettingsModal ja avisa
+    // "requer formato de video" nesse caso). Antes, qualquer recurso ligado
+    // OU input de audio forçava mp4 e ignorava o formato escolhido.
+    const needsVideo = videoExts.includes(outputFormat)
+    if (!needsVideo && (greenScreen || shouldBurn)) {
+      console.warn('[export] green screen/queima de legenda ignorados: saida em formato de audio')
+    }
     const outPath = outputFolder
-      ? await window.api.joinPath(outputFolder, `${base}_ALTERED.${finalFormat}`)
-      : await window.api.joinPath(selectedFile.folder, `${base}_ALTERED.${finalFormat}`)
+      ? await window.api.joinPath(outputFolder, `${base}_ALTERED.${outputFormat}`)
+      : await window.api.joinPath(selectedFile.folder, `${base}_ALTERED.${outputFormat}`)
 
     const tempOutPath = outputFolder
       ? await window.api.joinPath(outputFolder, `${base}_TEMP.${inputExt}`)
@@ -293,13 +303,13 @@ function App() {
     try {
       let assPath = null
 
+      // Duracao usada só para animar a barra de progresso do ffmpeg
+      const duration = hasSubtitles
+        ? parseSrtTime(subtitles[subtitles.length - 1].end) / 1000
+        : 3600
+      videoDurationRef.current = duration
+
       if (needsVideo) {
-        const duration = hasSubtitles
-          ? parseSrtTime(subtitles[subtitles.length - 1].end) / 1000
-          : 3600
-
-        videoDurationRef.current = duration
-
         let ffmpegArgs
         if (isVideoInput) {
           ffmpegArgs = [
@@ -372,27 +382,41 @@ function App() {
             videoFilters.push(`ass=corgi_sub.ass:fontsdir=${escapedFontsDir}`)
             console.log(`[export] fontsdir: ${escapedFontsDir}`)
           }
-
-          if (videoFilters.length > 0) {
-            ffmpegArgs.push('-vf', videoFilters.join(','))
-          }
         }
 
-        ffmpegArgs.push('-c:v', 'libx264', '-c:a', 'aac', '-shortest', outPath)
+        // O -vf fica FORA do if(shouldBurn): dentro dele, a resolucao (scale)
+        // era ignorada quando a queima de legenda estava desligada.
+        if (videoFilters.length > 0) {
+          ffmpegArgs.push('-vf', videoFilters.join(','))
+        }
+
+        // Codecs por container: webm so aceita VP9/VP8 + Opus/Vorbis
+        if (outputFormat === 'webm') {
+          ffmpegArgs.push('-c:v', 'libvpx-vp9', '-cpu-used', '4', '-deadline', 'realtime', '-c:a', 'libopus')
+        } else {
+          ffmpegArgs.push('-c:v', 'libx264', '-c:a', 'aac')
+        }
+        ffmpegArgs.push('-shortest', outPath)
         const ffmpegResult = await window.api.runFfmpeg(ffmpegArgs, outputDir)
         if (!ffmpegResult.success) {
           videoDurationRef.current = 0
           lastPct.current = 0
-          setProgress({ pct: 0, text: 'ERRO' })
+          setProgress({ pct: 0, text: t('common.error') })
           return
         }
       } else {
-        const ffmpegArgs = ['-y', '-i', tempOutPath, '-c:a', 'aac', outPath]
+        // Saida de audio: descarta a trilha de video e usa o codec do formato
+        // escolhido (o '-c:a aac' fixo antigo era rejeitado por mp3/wav/flac/ogg).
+        const audioCodecs = { mp3: 'libmp3lame', wav: 'pcm_s16le', flac: 'flac', ogg: 'libvorbis', aac: 'aac', m4a: 'aac' }
+        const ffmpegArgs = ['-y', '-i', tempOutPath, '-vn']
+        // Mesmo formato da entrada: corta sem reencodar (perda zero)
+        ffmpegArgs.push('-c:a', inputExt === outputFormat ? 'copy' : (audioCodecs[outputFormat] || 'aac'))
+        ffmpegArgs.push(outPath)
         const ffmpegResult = await window.api.runFfmpeg(ffmpegArgs)
         if (!ffmpegResult.success) {
           videoDurationRef.current = 0
           lastPct.current = 0
-          setProgress({ pct: 0, text: 'ERRO' })
+          setProgress({ pct: 0, text: t('common.error') })
           return
         }
       }
@@ -412,11 +436,11 @@ function App() {
   }
 
   const handleGenerateSubtitles = async () => {
-    if (!selectedFile || generatingSubtitles) return
-    if (videoRef.current) {
-      videoRef.current.pause()
-      if (waveSurferRef?.current) waveSurferRef.current.pause()
-    }
+    if (!selectedFile || generatingSubtitles || processing) return
+    // Player para imediatamente ao gerar legenda — video e wavesurfer
+    // pausados INDEPENDENTES (em arquivo de audio nao existe videoRef)
+    if (videoRef.current) videoRef.current.pause()
+    if (waveSurferRef?.current) waveSurferRef.current.pause()
     whisperGenRef.current++
     whisperStoppingRef.current = false
     setGeneratingSubtitles(true)
@@ -427,7 +451,7 @@ function App() {
       const modelExists = await window.api.checkModel(subtitleModel)
       if (!modelExists) {
         setGeneratingSubtitles(false)
-        setErrorMessage(`O modelo "${subtitleModel}" não está instalado.\n\nVá em Configurações (ícone de engrenagem) > Geral e baixe o modelo.`)
+        setErrorMessage(t('app.errModelNotInstalled', { model: subtitleModel }))
         setShowError(true)
         return
       }
@@ -439,7 +463,7 @@ function App() {
         audioFile: selectedFile.path,
         model: subtitleModel,
         output: wordsSrtPath,
-        language: 'pt',
+        language: lang,
         splitWords: true
       })
 
@@ -447,7 +471,7 @@ function App() {
         audioFile: selectedFile.path,
         model: subtitleModel,
         output: wordsSrtPath,
-        language: 'pt',
+        language: lang,
         splitWords: true
       })
 
@@ -491,7 +515,7 @@ function App() {
     } catch (err) {
       console.error('[subtitle] Error:', err)
       setGeneratingSubtitles(false)
-      setErrorMessage(err.message || 'Erro desconhecido ao gerar legendas')
+      setErrorMessage(err.message || t('app.errUnknown'))
       setShowError(true)
     }
   }
@@ -632,6 +656,7 @@ function App() {
       smart_subtitle: String(newConfig.smart_subtitle ?? smartSubtitle),
       auto_line_wrap: String(newConfig.auto_line_wrap ?? autoLineWrap),
       subtitle_configs: JSON.stringify(newConfig.subtitle_configs ?? subtitleConfigs),
+      language: newConfig.language ?? lang,
     })
   }
 
@@ -783,8 +808,8 @@ function App() {
       )}
       {showExportToast && (
         <Toast
-          message="Exportacao concluida!"
-          linkLabel="ABRIR PASTA"
+          message={t('app.exportToast')}
+          linkLabel={t('app.openFolder')}
           onLinkClick={() => window.api.openFolder(exportedFolderPath)}
           duration={5000}
           onClose={() => setShowExportToast(false)}

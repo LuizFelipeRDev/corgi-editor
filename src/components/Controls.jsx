@@ -1,11 +1,14 @@
+import { useLang } from '../lib/i18n'
+
 function Controls({ threshold, setThreshold, marginVal, setMarginVal, processing, generatingSubtitles, onExport, progress, onSaveConfig }) {
+  const { t } = useLang()
   const handleBlur = () => {
     onSaveConfig({ threshold, margin: marginVal })
   }
   return (
     <div className="w-[45%] min-w-[180px] p-4 flex flex-col justify-center  border-retro-black">
       <div className="mb-4">
-        <label className="font-pixel text-[7px] text-retro-black uppercase block mb-2">VOLUME MÍNIMO</label>
+        <label className="font-pixel text-[7px] text-retro-black uppercase block mb-2">{t('controls.minVolume')}</label>
         <div className="flex items-center gap-2">
           <div className="w-20 h-9 border-2 border-retro-black rounded bg-retro-bg shadow-retro-sm flex items-center overflow-hidden">
             <input
@@ -22,7 +25,7 @@ function Controls({ threshold, setThreshold, marginVal, setMarginVal, processing
       </div>
 
       <div className="mb-4">
-        <label className="font-pixel text-[7px] text-retro-black uppercase block mb-2">MARGEM</label>
+        <label className="font-pixel text-[7px] text-retro-black uppercase block mb-2">{t('controls.margin')}</label>
         <div className="flex items-center gap-2">
           <div className="w-20 h-9 border-2 border-retro-black rounded bg-retro-bg shadow-retro-sm flex items-center overflow-hidden">
             <input
@@ -43,7 +46,7 @@ function Controls({ threshold, setThreshold, marginVal, setMarginVal, processing
         disabled={processing || generatingSubtitles}
         className="btn-retro w-full h-10 bg-retro-bg border-2 border-retro-black rounded shadow-retro font-pixel text-[9px] text-retro-black uppercase tracking-wider hover:bg-yellow-50 disabled:opacity-30 disabled:cursor-not-allowed"
       >
-        {processing ? 'PROCESSANDO...' : 'EXPORTAR'}
+        {processing ? t('controls.processing') : t('controls.exportBtn')}
       </button>
 
       <div className="w-full h-10 mt-3 bg-retro-bg border-2 border-retro-black rounded shadow-retro overflow-hidden relative">

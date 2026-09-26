@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { SUBTITLE_STYLE_LIST, SUBTITLE_POSITION_LIST } from '../lib/subtitleStyles'
 import SubtitleConfigModal from './SubtitleConfigModal'
+import { useLang } from '../lib/i18n'
 
 function SubtitlesPanel({
   subtitles,
@@ -35,6 +36,7 @@ function SubtitlesPanel({
   const [editingStart, setEditingStart] = useState(null)
   const [editingEnd, setEditingEnd] = useState(null)
   const [showConfig, setShowConfig] = useState(false)
+  const { t } = useLang()
   const textRef = useRef(null)
   const startRef = useRef(null)
   const endRef = useRef(null)
@@ -136,13 +138,13 @@ function SubtitlesPanel({
   return (
     <div className="w-64 border-l-2 border-retro-black bg-retro-bg flex flex-col">
       <div className="p-3 border-b-2 border-retro-black">
-        <h3 className="font-pixel text-[8px] text-retro-black uppercase">LEGENDAS</h3>
+        <h3 className="font-pixel text-[8px] text-retro-black uppercase">{t('panel.title')}</h3>
       </div>
 
       {subtitlesEnabled && (
         <div className="p-3 border-b-2 border-retro-black/30">
           <div className="mb-3">
-            <label className="font-pixel text-[6px] text-retro-black/70 uppercase block mb-1">Estilo</label>
+            <label className="font-pixel text-[6px] text-retro-black/70 uppercase block mb-1">{t('panel.style')}</label>
             <select
               value={subtitleStyle}
               onChange={(e) => onStyleChange(e.target.value)}
@@ -155,7 +157,7 @@ function SubtitlesPanel({
           </div>
 
           <div>
-            <label className="font-pixel text-[6px] text-retro-black/70 uppercase block mb-1">Posicao</label>
+            <label className="font-pixel text-[6px] text-retro-black/70 uppercase block mb-1">{t('panel.position')}</label>
             {positionMode === 'fixed' ? (
               <div className="flex gap-1">
                 {SUBTITLE_POSITION_LIST.map((p) => (
@@ -183,9 +185,9 @@ function SubtitlesPanel({
                   className="w-full h-2 bg-retro-bg border border-retro-black rounded appearance-none cursor-pointer accent-retro-black"
                 />
                 <div className="flex justify-between mt-0.5">
-                  <span className="font-pixel text-[5px] text-retro-black/50">BAIXO</span>
+                  <span className="font-pixel text-[5px] text-retro-black/50">{t('panel.bottom')}</span>
                   <span className="font-pixel text-[5px] text-retro-black">{positionPercent}%</span>
-                  <span className="font-pixel text-[5px] text-retro-black/50">TOPO</span>
+                  <span className="font-pixel text-[5px] text-retro-black/50">{t('panel.top')}</span>
                 </div>
               </div>
             )}
@@ -195,7 +197,7 @@ function SubtitlesPanel({
             onClick={() => setShowConfig(true)}
             className="mt-3 w-full h-7 border-2 border-retro-black rounded bg-retro-bg shadow-retro-sm font-pixel text-[6px] text-retro-black uppercase hover:bg-gray-200"
           >
-            CONFIGURACAO LEGENDA
+            {t('panel.configBtn')}
           </button>
         </div>
       )}
@@ -203,21 +205,21 @@ function SubtitlesPanel({
       <div ref={listRef} className="flex-1 p-3 overflow-y-auto">
         {!selectedFile && (
           <p className="font-pixel text-[7px] text-retro-black/50 text-center mt-8">
-            Selecione um arquivo para gerar legendas
+            {t('panel.selectFile')}
           </p>
         )}
 
         {selectedFile && !generating && subtitles.length === 0 && (
           <div className="flex flex-col items-center gap-3 mt-8">
             <p className="font-pixel text-[7px] text-retro-black/50 text-center">
-              Nenhuma legenda gerada
+              {t('panel.noneGenerated')}
             </p>
             <button
               onClick={onGenerate}
               disabled={processing}
               className="btn-retro w-full h-8 bg-retro-bg border-2 border-retro-black rounded shadow-retro-sm font-pixel text-[7px] text-retro-black uppercase hover:bg-green-100 disabled:opacity-30 disabled:cursor-not-allowed"
             >
-              GERAR LEGENDAS
+              {t('panel.generate')}
             </button>
           </div>
         )}
@@ -225,7 +227,7 @@ function SubtitlesPanel({
         {generating && (
           <div className="flex flex-col items-center gap-3 mt-8">
             <p className="font-pixel text-[7px] text-retro-black text-center">
-              Gerando legendas...
+              {t('panel.generating')}
             </p>
             <div className="w-full h-4 border-2 border-retro-black rounded bg-retro-box overflow-hidden">
               <div className="h-full bg-retro-black/30 animate-pulse" />
@@ -234,7 +236,7 @@ function SubtitlesPanel({
               onClick={onStop}
               className="w-full h-8 border-2 border-red-700 rounded bg-red-500 shadow-retro-sm font-pixel text-[7px] text-white uppercase hover:bg-red-600"
             >
-              PARAR
+              {t('panel.stop')}
             </button>
           </div>
         )}
@@ -335,7 +337,7 @@ function SubtitlesPanel({
                         onClick={(e) => { e.stopPropagation(); onDeleteSubtitle(index) }}
                         className="btn-retro flex-1 h-5 bg-retro-bg border border-retro-black rounded font-pixel text-[5px] text-retro-black hover:bg-red-200"
                       >
-                        EXCLUIR
+                        {t('panel.delete')}
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); onSave() }}
@@ -343,7 +345,7 @@ function SubtitlesPanel({
                           hasChanges ? 'bg-yellow-100 hover:bg-yellow-200' : 'bg-retro-bg opacity-30 cursor-not-allowed'
                         }`}
                       >
-                        SALVAR
+                        {t('common.save')}
                       </button>
                     </div>
                   )}
@@ -360,7 +362,7 @@ function SubtitlesPanel({
                   : 'bg-retro-bg text-retro-black hover:bg-green-100'
               }`}
             >
-              + ADICIONAR LEGENDA
+              {t('panel.add')}
             </button>
 
             {subtitles.length > 0 && (
@@ -373,7 +375,7 @@ function SubtitlesPanel({
                     : 'bg-retro-bg text-retro-black hover:bg-yellow-100'
                 }`}
               >
-                {generating ? 'REGERANDO...' : 'REGERAR LEGENDA'}
+                {generating ? t('panel.regenerating') : t('panel.regenerate')}
               </button>
             )}
           </div>

@@ -34,6 +34,21 @@ export const SUBTITLE_HIGHLIGHT_BOX = {
   paddingYRatio: 0.08,
 }
 
+// POPLINE: faixa FINA na base da palavra - "quase como uma linha" com
+// cantos levemente arredondados (referencia: popline.png / popline.md),
+// em vez de caixa envolvendo a palavra:
+//   - largura exatamente a da palavra (paddingXRatio 0);
+//   - topo da faixa = bandTopRatio x fonte ACIMA da baseline (so raspa
+//     a base das letras, como na referencia);
+//   - altura da faixa = bandHeightRatio x fonte;
+//   - borderRadiusRatio e relativo a ALTURA da faixa (nao a fonte).
+export const SUBTITLE_POPLINE_BOX = {
+  paddingXRatio: 0,
+  bandTopRatio: 0.03,
+  bandHeightRatio: 0.27,
+  borderRadiusRatio: 0.30,
+}
+
 export function getPreviewFontSize(baseFontSize, fullscreen = false) {
   const displayFontSize = fullscreen
     ? SUBTITLE_DISPLAY_DEFAULTS.fullscreen.fontSize

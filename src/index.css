@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;500;600;700&display=swap');
 
 @font-face {
   font-family: 'Montserrat';
@@ -152,8 +152,129 @@ html, body, #root { height: 100%; overflow: hidden; user-select: none; }
   40%  { transform: scale(1.05); }
   100% { transform: scale(1.00); }
 }
+/* POPLINE: pop so pra cima (sem "encolher" antes), pico em 40% da
+   duracao - mesma forma do \\t do export (subtitleRender.js). O
+   transform escala a caixa E a palavra juntos (ambos sao o mesmo span). */
+@keyframes subtitle-popline {
+  0%   { transform: scale(1.00); }
+  40%  { transform: scale(1.15); }
+  100% { transform: scale(1.00); }
+}
 
 @keyframes toast-progress {
   0%   { width: 100%; }
   100% { width: 0%; }
+}
+
+/* =====================================================================
+   TEMA (data-theme no <html>, aplicado por src/lib/theme.jsx)
+   ---------------------------------------------------------------------
+   retro (padrao): valores originais, byte a byte - nada muda em relacao
+   ao app atual. modern: troca as variaveis e suaviza bordas, cantos,
+   sombras e tipografia. As classes Tailwind continuam as mesmas; so o
+   valor por tras delas muda.
+   ===================================================================== */
+:root {
+  /* retro */
+  --c-bg: 181 223 245;      /* #b5dff5 */
+  --c-box: 245 240 208;     /* #f5f0d0 */
+  --c-ink: 26 26 26;        /* #1a1a1a */
+  --c-accent: 45 140 240;   /* #2d8cf0 */
+  --font-ui: 'Press Start 2P', monospace;
+  --shadow-1: 4px 4px 0px #1a1a1a;
+  --shadow-2: 2px 2px 0px #1a1a1a;
+}
+
+[data-theme='modern'] {
+  /* modern — superficies em camadas (estilo Linear/Vercel) */
+  --c-bg: 16 16 20;         /* #101014 controles, inputs, barras */
+  --c-box: 23 23 28;        /* #17171c painel/chrome/modais */
+  --c-ink: 232 232 234;     /* #e8e8ea texto */
+  --c-accent: 155 48 255;   /* #9B30FF — mesmo roxo do estilo Popline */
+  --font-ui: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  --shadow-1: 0 4px 16px rgba(0, 0, 0, 0.45);
+  --shadow-2: 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+/* Fundo da janela/documento acompanha o tema (fica atras do root, so aparece
+   no pre-paint e em bordas de scroll). */
+body { background-color: rgb(var(--c-box)); }
+
+/* ====== MODERN: texto padrao ======
+   Sem classe de cor o navegador herda preto; no tema escuro isso fica
+   invisivel. Definir a cor aqui cobre todos os elementos sem text-*. */
+[data-theme='modern'] { color: rgb(var(--c-ink)); }
+
+/* ====== MODERN: superficies invertidas e estados de feedback ======
+   Cores fixas da paleta Tailwind usadas em botões/hover/labels sao claras
+   demais para fundo escuro — re-mapeadas para equivalentes dark. */
+[data-theme='modern'] .bg-retro-black { background-color: #26262e; }
+[data-theme='modern'] .text-retro-bg { color: #e8e8ea; }
+[data-theme='modern'] .bg-green-50 { background-color: #10291c; }
+[data-theme='modern'] .bg-green-100 { background-color: #14331f; }
+[data-theme='modern'] .bg-yellow-100 { background-color: #2e2510; }
+[data-theme='modern'] .hover\:bg-gray-200:hover { background-color: #26262e; }
+[data-theme='modern'] .hover\:bg-gray-800:hover { background-color: #30303a; }
+[data-theme='modern'] .hover\:bg-green-50:hover { background-color: #10291c; }
+[data-theme='modern'] .hover\:bg-green-100:hover { background-color: #1a4229; }
+[data-theme='modern'] .hover\:bg-green-200:hover { background-color: #1f4d30; }
+[data-theme='modern'] .hover\:bg-yellow-50:hover { background-color: #26200f; }
+[data-theme='modern'] .hover\:bg-yellow-100:hover { background-color: #3a2f13; }
+[data-theme='modern'] .hover\:bg-yellow-200:hover { background-color: #443817; }
+[data-theme='modern'] .hover\:bg-red-200:hover { background-color: #3d1d1f; }
+[data-theme='modern'] .text-green-600,
+[data-theme='modern'] .text-green-700 { color: #4ade80; }
+[data-theme='modern'] .text-red-600 { color: #f87171; }
+/* fill do progresso do EXPORTAR: texto claro por cima precisa de fundo
+   escuro/saturado — usa o accent no modern (nao verde claro). */
+[data-theme='modern'] .bg-green-500\/80 { background-color: rgb(var(--c-accent) / 0.85); }
+
+/* ====== MODERN: bordas, cantos e profundidade ======
+   Retro = bordas grossas pretas e sombra dura; modern = borda fina
+   translucida e sombra suave (valores das variaveis la em cima). */
+[data-theme='modern'] .border-retro-black { border-color: rgba(255, 255, 255, 0.10); }
+[data-theme='modern'] .border-2,
+[data-theme='modern'] .border-t-2,
+[data-theme='modern'] .border-r-2,
+[data-theme='modern'] .border-b-2,
+[data-theme='modern'] .border-l-2,
+[data-theme='modern'] .border-\[4px\] { border-width: 1px; }
+[data-theme='modern'] .rounded { border-radius: 8px; }
+[data-theme='modern'] .rounded-t { border-top-left-radius: 8px; border-top-right-radius: 8px; }
+[data-theme='modern'] .rounded-lg { border-radius: 12px; }
+[data-theme='modern'] .btn-retro:active { transform: translate(1px, 1px); }
+/* foco visivel (outline-none nos inputs) */
+[data-theme='modern'] input:focus-visible,
+[data-theme='modern'] select:focus-visible,
+[data-theme='modern'] textarea:focus-visible {
+  border-color: rgb(var(--c-accent) / 0.7);
+}
+
+/* ====== MODERN: escala tipografica ======
+   Press Start 2P ocupa muito mais o em que Inter: sem re-escala os rotulos
+   de 5-10px (feitos para fonte pixel) ficariam ilegiveis no modern.
+   So afeta elements com estas classes (icones de video em text-[12px]
+   ficam fora de proposito). */
+[data-theme='modern'] .text-\[5px\] { font-size: 10px; }
+[data-theme='modern'] .text-\[6px\] { font-size: 11px; }
+[data-theme='modern'] .text-\[7px\] { font-size: 12px; }
+[data-theme='modern'] .text-\[8px\] { font-size: 13px; }
+[data-theme='modern'] .text-\[9px\] { font-size: 14px; }
+[data-theme='modern'] .text-\[10px\] { font-size: 15px; }
+/* translate-y-[2px] centraliza a baseline da fonte pixel nos inputs;
+   Inter ja nasce centrada, entao zera no modern. */
+[data-theme='modern'] .translate-y-\[2px\] { transform: translateY(0); }
+
+/* ====== MODERN: scrollbars ====== */
+[data-theme='modern'] ::-webkit-scrollbar { width: 10px; height: 10px; }
+[data-theme='modern'] ::-webkit-scrollbar-track { background: transparent; }
+[data-theme='modern'] ::-webkit-scrollbar-thumb {
+  background: #32323b;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+[data-theme='modern'] ::-webkit-scrollbar-thumb:hover {
+  background-color: #40404c;
+  background-clip: content-box;
 }

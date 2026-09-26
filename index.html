@@ -4,6 +4,31 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>CORGI-EDITOR</title>
+    <script>
+      // Preview da UI no navegador (sem Electron): se o preload NAO injetou
+      // window.api, faz um mock minimo para a tela carregar. Em producao o
+      // preload define window.api antes da pagina, entao este bloco nunca roda.
+      if (!window.api) {
+        const defaults = {
+          threshold: '-30', margin: '0.5', output_folder: '', output_format: 'mp4',
+          output_resolution: 'original', subtitles: 'false', subtitle_model: 'small',
+          subtitle_position: 'bottom', subtitle_style: 'hormozi', green_screen: 'false',
+          burn_subtitles: 'true', words_per_line: '4', lines_count: '2',
+          subtitle_configs: '{}', subtitle_position_mode: 'fixed',
+          subtitle_position_percent: '80', subtitle_persistence: '1',
+          smart_subtitle: 'false', auto_line_wrap: 'false', language: 'en', theme: 'retro',
+        };
+        window.api = new Proxy({}, {
+          get(_, prop) {
+            if (prop === 'getConfig') return async () => ({ ...defaults });
+            if (prop === 'saveConfig') return async () => {};
+            if (prop === 'checkModel' || prop === 'pathExists' || prop === 'checkWhisperCli') return async () => false;
+            if (typeof prop === 'string' && prop.startsWith('on')) return () => {};
+            return async () => undefined;
+          },
+        });
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

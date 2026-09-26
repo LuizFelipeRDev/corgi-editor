@@ -1,7 +1,7 @@
 import { SUBTITLE_STYLES, hasPopEffect } from './subtitleStyles'
-import { SUBTITLE_DISPLAY_DEFAULTS, getExportFontSize, SUBTITLE_HIGHLIGHT_BOX } from '../global_config/subtitleConfig'
+import { SUBTITLE_DISPLAY_DEFAULTS, getExportFontSize, SUBTITLE_HIGHLIGHT_BOX, SUBTITLE_POPLINE_BOX } from '../global_config/subtitleConfig'
 import { FONTS } from '../global_config/fonts'
-import { getFontRenderScale } from '../global_config/fontMetrics'
+import { getFontRenderScale, getFontWinAscent } from '../global_config/fontMetrics'
 
 const resolveAssFontName = (fontId, styleFontFamily) => {
   const picked = FONTS.find(f => f.id === fontId)
@@ -247,34 +247,88 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
       continue
     }
 
-    // HIGHLIGHT BOX: caixa de fundo na palavra ativa. O layout e calculado
-    // UMA vez por bloco e usado pelo texto e pela caixa, entao a caixa
-    // sempre envolve exatamente a palavra visivel. O texto sai uma unica
-    // vez por bloco (camada 1) e a caixa uma vez por fatia de palavra
-    // (camada 0, atras do texto) - sem texto duplicado.
-    if (styleConfig.animationType === 'highlightbox') {
+    // HIGHLIGHT BOX / POPLINE: destaque de fundo na palavra ativa. O
+    // layout e calculado UMA vez por bloco e usado pelo texto e pelo
+    // destaque, entao o desenho sempre bate com a palavra visivel. O
+    // texto sai uma unica vez por bloco (camada 1) e o destaque uma vez
+    // por fatia de palavra (camada 0, atras do texto) - sem texto
+    // duplicado. No highlightbox o destaque e uma caixa envolvendo a
+    // linha; no POPLINE e uma faixa fina na base da palavra ("quase uma
+    // linha", cantos levemente arredondados - referencia popline.png).
+    //
+    // POPLINE adiciona o pop: a faixa e a palavra ativa escalam juntas em
+    // torno do MESMO ponto (\org no centro da palavra), entao a faixa
+    // continua colada na palavra durante toda a escala. No preview os dois
+    // sao o mesmo span, entao escalam juntos sem esforco - e as janelas de
+    // tempo batem com o animation `subtitle-popline` (pico em 40%).
+    if (styleConfig.animationType === 'highlightbox' || styleConfig.animationType === 'popline') {
+      const isPopline = styleConfig.animationType === 'popline'
+      const boxCfg = isPopline ? SUBTITLE_POPLINE_BOX : SUBTITLE_HIGHLIGHT_BOX
       const layout = computeHighlightBoxLayout(
         blockWords, playResX, playResY, scaledFontSize, alignment, marginV,
-        cssFontFamily, styleConfig.bold, styleConfig.wordSpacing, assFontName
+        cssFontFamily, styleConfig.bold, styleConfig.wordSpacing, assFontName, boxCfg
       )
+
+      // Janela do pop: os tempos de \t sao MILISEGUNDOS no libass/VSFilter
+      // (nao centissegundos como os tempos do Dialogue) - validado por
+      // sonda com o ffmpeg embutido: valores em cs terminavam o pop 10x
+      // antes de ele aparecer. Nomes em *Ms de proposito (o legado tem
+      // "durCs" guardando ms - confuso).
+      const popPeak = 100 + (styleConfig.popSize || 0)
+      const popTagFor = (w, t1Ms) => {
+        const wordMs = Math.max(8, Math.round((w.end - w.start) * 1000))
+        const durMs = Math.max(8, Math.min(Math.round((styleConfig.popDuration || 0.10) * 1000), wordMs))
+        const growMs = Math.max(3, Math.round(durMs * 0.4))
+        return `\\t(${t1Ms},${t1Ms + growMs},\\fscx${popPeak}\\fscy${popPeak})\\t(${t1Ms + growMs},${t1Ms + durMs},\\fscx100\\fscy100)`
+      }
 
       const textStart = secondsToAssTime(blockWords[0].start)
       const textEnd = secondsToAssTime(block.end)
+      const blockStart = blockWords[0].start
       for (let j = 0; j < blockWords.length; j++) {
         const w = blockWords[j]
-        const wordTag = `{\\an7\\pos(${Math.round(layout.wordXs[j])},${Math.round(layout.lineTops[w.lineIdx])})}`
+        const wx = Math.round(layout.wordXs[j])
+        const wy = Math.round(layout.lineTops[w.lineIdx])
+        let wordTag = `{\\an7\\pos(${wx},${wy})`
+        if (isPopline) {
+          // O texto nasce em blockStart, entao o pop comeca quando a
+          // palavra fica ativa: t1 = inicio da palavra relativo ao bloco.
+          const cx = Math.round(layout.wordXs[j] + layout.wordWidths[j] / 2)
+          const cy = Math.round(wy + scaledFontSize / 2)
+          const t1 = Math.max(0, Math.round((w.start - blockStart) * 1000))
+          wordTag += `\\org(${cx},${cy})${popTagFor(w, t1)}`
+        }
+        wordTag += '}'
         assContent += `Dialogue: 1,${textStart},${textEnd},Default,,0,0,0,,${wordTag}${w.text.toUpperCase()}\n`
       }
 
       for (let i = 0; i < blockWords.length; i++) {
+        const w = blockWords[i]
         const nextStart = i < blockWords.length - 1 ? blockWords[i + 1].start : block.end
         const boxX = Math.round(layout.wordXs[i] - layout.padX)
-        const boxY = Math.round(layout.lineTops[blockWords[i].lineIdx] - layout.padY)
+        // POPLINE: faixa fina ancorada na baseline da linha (bandOffsetY
+        // ja mede do topo da linha ate o topo da faixa); highlightbox
+        // mantem a caixa envolvendo a linha (lineTop - padY).
+        const boxY = isPopline
+          ? Math.round(layout.lineTops[w.lineIdx] + layout.bandOffsetY)
+          : Math.round(layout.lineTops[w.lineIdx] - layout.padY)
         const boxW = Math.round(layout.wordWidths[i] + layout.padX * 2)
-        const boxH = Math.round(scaledFontSize + layout.padY * 2)
+        const boxH = isPopline
+          ? Math.round(layout.bandHeight)
+          : Math.round(scaledFontSize + layout.padY * 2)
         const path = highlightBoxPath(boxW, boxH, layout.radius)
-        const boxTag = `{\\an7\\pos(${boxX},${boxY})\\p1\\bord0\\shad0\\c${highlightAss}}${path}{\\p0}`
-        assContent += `Dialogue: 0,${secondsToAssTime(blockWords[i].start)},${secondsToAssTime(nextStart)},Default,,0,0,0,,${boxTag}\n`
+        let boxTag = `{\\an7\\pos(${boxX},${boxY})`
+        if (isPopline) {
+          // A caixa nasce junto com a palavra ativa => t1 = 0. Mesmo
+          // centro \org do texto: escala em sincronia perfeita.
+          const cx = Math.round(layout.wordXs[i] + layout.wordWidths[i] / 2)
+          const cy = Math.round(layout.lineTops[w.lineIdx] + scaledFontSize / 2)
+          boxTag += `\\org(${cx},${cy})`
+        }
+        boxTag += `\\p1\\bord0\\shad0\\c${highlightAss}`
+        if (isPopline) boxTag += popTagFor(w, 0)
+        boxTag += `}${path}{\\p0}`
+        assContent += `Dialogue: 0,${secondsToAssTime(w.start)},${secondsToAssTime(nextStart)},Default,,0,0,0,,${boxTag}\n`
       }
       continue
     }
@@ -507,7 +561,9 @@ function measureTextMetrics(text, fontSize, fontFamily, bold) {
 // normaliza pelo par winAscent+winDescent do OS/2. O canvas mede em "em
 // real", entao as larguras sao multiplicadas por renderScale - sem isso
 // as palavras saem espacadas demais e a caixa nao envolve a palavra.
-function computeHighlightBoxLayout(blockWords, playResX, playResY, fontSize, alignment, marginV, fontFamily, bold, wordSpacing = 100, assFontName = '') {
+// Os ratios de padding/raio vem de boxCfg (SUBTITLE_HIGHLIGHT_BOX ou
+// SUBTITLE_POPLINE_BOX), mantendo preview e export com a MESMA folga.
+function computeHighlightBoxLayout(blockWords, playResX, playResY, fontSize, alignment, marginV, fontFamily, bold, wordSpacing = 100, assFontName = '', boxCfg = SUBTITLE_HIGHLIGHT_BOX) {
   const marginL = 10
   const marginR = 10
   const availableWidth = playResX - marginL - marginR
@@ -520,9 +576,21 @@ function computeHighlightBoxLayout(blockWords, playResX, playResY, fontSize, ali
   // (16.8px) fica maior que o espaco visivel e a caixa encosta na palavra
   // vizinha. padY e radius ficam em unidades nominais porque se prendem a
   // caixa de linha (altura nominal = fontSize), nao aos glifos.
-  const padX = fontSize * SUBTITLE_HIGHLIGHT_BOX.paddingXRatio * renderScale
-  const padY = fontSize * SUBTITLE_HIGHLIGHT_BOX.paddingYRatio
-  const radius = Math.max(1, Math.round(fontSize * SUBTITLE_HIGHLIGHT_BOX.borderRadiusRatio))
+  const padX = fontSize * boxCfg.paddingXRatio * renderScale
+
+  // POPLINE (bandHeightRatio presente): faixa fina na BASE da palavra em
+  // vez de caixa envolvendo a linha. O topo da faixa vem da baseline da
+  // linha (winAscent x fonte a partir do topo, ver fontMetrics.js)
+  // menos bandTopRatio x fonte - assim a faixa so raspa a base das
+  // letras, como na referencia (popline.png). O raio e relativo a
+  // ALTURA da faixa; highlightbox mantem padY/raio em unidades de fonte.
+  const isBand = boxCfg.bandHeightRatio !== undefined
+  const padY = isBand ? 0 : fontSize * boxCfg.paddingYRatio
+  const bandHeight = isBand ? fontSize * boxCfg.bandHeightRatio : 0
+  const bandOffsetY = isBand ? fontSize * (getFontWinAscent(assFontName) - boxCfg.bandTopRatio) : 0
+  const radius = Math.max(1, Math.round(
+    isBand ? bandHeight * boxCfg.borderRadiusRatio : fontSize * boxCfg.borderRadiusRatio
+  ))
 
   const lineHeight = fontSize
   const numLines = Math.max(...blockWords.map(w => w.lineIdx)) + 1
@@ -565,10 +633,14 @@ function computeHighlightBoxLayout(blockWords, playResX, playResY, fontSize, ali
     return x
   })
 
-  return { wordWidths, wordXs, lineTops, padX, padY, radius, lineHeight, numLines }
+  return { wordWidths, wordXs, lineTops, padX, padY, radius, bandOffsetY, bandHeight, lineHeight, numLines }
 }
 
 function highlightBoxPath(boxW, boxH, radius) {
+  // O CSS limita automaticamente o border-radius ao tamanho do elemento;
+  // o caminho manual precisa da mesma protecao - no POPLINE o padX e 0 e
+  // uma palavra estreita daria cantos negativos (coordenadas invertidas).
+  radius = Math.max(0, Math.min(radius, boxW / 2, boxH / 2))
   const k = radius * 0.5523
   const x = (v) => Math.round(v)
   return (

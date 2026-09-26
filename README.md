@@ -2,7 +2,7 @@
 
 Automatic video/audio editing with AI-powered subtitles.
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue)
+![Version](https://img.shields.io/badge/version-1.5.0-blue)
 ![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
@@ -19,13 +19,16 @@ CORGI-EDITOR is a desktop application for automatic video and audio editing. It 
 
 - **Auto-silence removal** — Automatically cuts silences from video/audio using auto-editor
 - **AI subtitle generation** — Word-level transcription via whisper.cpp with CUDA GPU support
-- **7 subtitle styles** — Hormozi, MrBeast, Karaoke, Minimal, Word Pop, Simple, Highlight Box
+- **8 subtitle styles** — Hormozi, MrBeast, Karaoke, Minimal, Word Pop, Simple, Highlight Box, Popline
 - **Live preview** — Real-time subtitle overlay with word-by-word animation
 - **Per-style configuration** — Custom fonts, colors, font size, words per line per style
+- **16 bundled fonts** — Montserrat, Bebas Neue, Bangers, Lilita One, Komika Axis, IBM Plex Sans, Anton, Archivo Black, Poppins, Rubik, Roboto, Oswald, Inter, Fira Sans Condensed, Luckiest Guy, Titan One (all free for commercial use — see `src/global_config/fonts/LICENSES.md`)
 - **Smart subtitle mode** — Automatic sentence-break detection at punctuation
+- **Auto line wrap** — Breaks the line when the text doesn't fit, keeping the same group (optional)
 - **Output resolution** — Original, Landscape (16:9), or Portrait (9:16)
 - **Green screen mode** — Generate subtitle video with green background for chroma key
 - **Multiple formats** — MP3, WAV, FLAC, OGG, AAC, M4A, MP4, MKV, MOV, WEBM, AVI
+- **Bilingual UI** — English and Portuguese (Settings > Sistema)
 
 ---
 
@@ -63,6 +66,7 @@ Click the gear icon to open Settings:
 
 | Tab | Options |
 |-----|---------|
+| **Sistema** | Language (English / Português) |
 | **Geral** | Output folder, GPU download, whisper model |
 | **Saida** | Output format, resolution (Original/Landscape/Portrait) |
 | **Legendas** | Enable subtitles, position, words per line, persistence, smart mode |
@@ -85,7 +89,7 @@ Use the sliders in the Controls panel:
 Click **EXPORTAR** to process the file:
 1. auto-editor removes silences
 2. Subtitles are remapped to the edited timeline
-3. FFmpeg encodes the final output with embedded subtitles
+3. FFmpeg encodes the final output in the format chosen in Settings (audio formats export audio only)
 
 ---
 
@@ -100,6 +104,7 @@ Click **EXPORTAR** to process the file:
 | **Word Pop** | Montserrat | Pop animation (cyan) | TikTok & viral content |
 | **Simple** | Montserrat | Static | Podcast & conversation |
 | **Highlight Box** | Montserrat | Background box on active word (purple) | Viral & trending content |
+| **Popline** | Montserrat | Thin purple band + pop on active word | Pop & viral content |
 
 ### Per-Style Configuration
 
@@ -115,7 +120,7 @@ Click the gear icon next to any style to customize:
 ## Smart Subtitle Mode
 
 When enabled in Settings > Legendas:
-- Detects sentence-ending punctuation (`.`, `!`, `?)
+- Detects sentence-ending punctuation (`.`, `!`, `?`)
 - Removes trailing periods from displayed text
 - `!` and `?` remain visible
 - Automatically breaks subtitle blocks at sentence boundaries
@@ -179,6 +184,36 @@ Settings are saved automatically in `%APPDATA%/corgi-editor/config.ini`.
 
 ---
 
+## Credits
+
+CORGI-EDITOR is built on top of these open-source projects — full credit to their authors and contributors.
+
+### Core tools (bundled with the app)
+
+| Project | Repository | Used for |
+|---------|-----------|----------|
+| **auto-editor** | [github.com/WyattBlue/auto-editor](https://github.com/WyattBlue/auto-editor) | Silence detection and automatic cutting |
+| **FFmpeg** | [github.com/FFmpeg/FFmpeg](https://github.com/FFmpeg/FFmpeg) | Encoding, format conversion and burned-in subtitles |
+| **whisper.cpp** | [github.com/ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp) | Word-level speech-to-text for AI subtitles (CPU/CUDA) |
+
+### App stack
+
+| Project | Repository | Used for |
+|---------|-----------|----------|
+| **Electron** | [github.com/electron/electron](https://github.com/electron/electron) | Desktop runtime |
+| **React** | [github.com/facebook/react](https://github.com/facebook/react) | UI framework |
+| **Vite** | [github.com/vitejs/vite](https://github.com/vitejs/vite) | Build tool and dev server |
+| **Tailwind CSS** | [github.com/tailwindlabs/tailwindcss](https://github.com/tailwindlabs/tailwindcss) | Styling |
+| **WaveSurfer.js** | [github.com/katspaugh/wavesurfer.js](https://github.com/katspaugh/wavesurfer.js) | Audio waveform visualization |
+| **Tabler Icons** | [github.com/tabler/tabler-icons](https://github.com/tabler/tabler-icons) | Interface icons |
+| **electron-builder** | [github.com/electron-userland/electron-builder](https://github.com/electron-userland/electron-builder) | Windows (NSIS) installer |
+
+### Fonts
+
+The 16 bundled fonts come from [Google Fonts](https://fonts.google.com/), all free for commercial use — see `src/global_config/fonts/LICENSES.md` for the full list and their licenses.
+
+---
+
 ## License
 
 MIT License
@@ -197,7 +232,7 @@ CORGI-EDITOR é uma aplicação desktop para edição automática de vídeo e á
 
 - **Remoção automática de silêncios** — Corta silêncios automaticamente usando auto-editor
 - **Geração de legendas com IA** — Transcrição nível de palavra via whisper.cpp com suporte CUDA GPU
-- **7 estilos de legenda** — Hormozi, MrBeast, Karaoke, Minimal, Word Pop, Simple, Highlight Box
+- **8 estilos de legenda** — Hormozi, MrBeast, Karaoke, Minimal, Word Pop, Simple, Highlight Box, Popline
 - **Pré-visualização em tempo real** — Overlay de legendas com animação palavra por palavra
 - **Configuração por estilo** — Fontes, cores, tamanho, palavras por linha personalizáveis
 - **16 fontes embutidas** — Montserrat, Bebas Neue, Bangers, Lilita One, Komika Axis, IBM Plex Sans, Anton, Archivo Black, Poppins, Rubik, Roboto, Oswald, Inter, Fira Sans Condensed, Luckiest Guy e Titan One (todas gratuitas para uso comercial — veja `src/global_config/fonts/LICENSES.md`)
@@ -206,6 +241,7 @@ CORGI-EDITOR é uma aplicação desktop para edição automática de vídeo e á
 - **Resolução de saída** — Original, Paisagem (16:9) ou Retrato (9:16)
 - **Modo tela verde** — Gera vídeo com legendas e fundo verde para chroma key
 - **Múltiplos formatos** — MP3, WAV, FLAC, OGG, AAC, M4A, MP4, MKV, MOV, WEBM, AVI
+- **Interface bilíngue** — Inglês e Português (Configurações > Sistema)
 
 ---
 
@@ -236,6 +272,7 @@ Clique no ícone de engrenagem para abrir Configurações:
 
 | Aba | Opções |
 |-----|--------|
+| **Sistema** | Idioma (English / Português) |
 | **Geral** | Pasta de destino, download GPU, modelo whisper |
 | **Saída** | Formato, resolução (Original/Paisagem/Retrato) |
 | **Legendas** | Ativar legendas, posição, palavras por linha, persistência, modo inteligente, quebra automática de linha |
@@ -258,7 +295,7 @@ Use os sliders no painel Controles:
 Clique em **EXPORTAR** para processar o arquivo:
 1. auto-editor remove os silêncios
 2. Legendas são remapeadas para a linha do tempo editada
-3. FFmpeg codifica a saída final com legendas embutidas
+3. FFmpeg codifica a saída final no formato escolhido em Configurações (formatos de áudio exportam apenas áudio)
 
 ---
 
@@ -273,6 +310,7 @@ Clique em **EXPORTAR** para processar o arquivo:
 | **Word Pop** | Montserrat | Pop animação (ciano) | TikTok e conteúdo viral |
 | **Simple** | Montserrat | Estático | Podcast e conversação |
 | **Highlight Box** | Montserrat | Caixa de fundo na palavra ativa (roxo) | Viral e trending |
+| **Popline** | Montserrat | Faixa roxa fina + pop na palavra ativa | Pop e conteúdo viral |
 
 ---
 
@@ -284,6 +322,36 @@ Aceleração GPU disponível para GPUs NVIDIA:
 2. Clique em **BAIXAR GPU (NVIDIA)** (~422 MB)
 3. O app baixa `whisper-cuda.zip` do GitHub Releases
 4. Arquivos são extraídos para `%APPDATA%/corgi-editor/bin/whisper/`
+
+---
+
+## Créditos e Tecnologias
+
+O CORGI-EDITOR foi construído sobre estes projetos open source — todo o crédito vai para seus autores e colaboradores.
+
+### Ferramentas principais (empacotadas no app)
+
+| Projeto | Repositório | Uso |
+|---------|-------------|-----|
+| **auto-editor** | [github.com/WyattBlue/auto-editor](https://github.com/WyattBlue/auto-editor) | Detecção de silêncio e corte automático |
+| **FFmpeg** | [github.com/FFmpeg/FFmpeg](https://github.com/FFmpeg/FFmpeg) | Codificação, conversão de formatos e legendas embutidas |
+| **whisper.cpp** | [github.com/ggml-org/whisper.cpp](https://github.com/ggml-org/whisper.cpp) | Transcrição nível de palavra das legendas com IA (CPU/CUDA) |
+
+### Stack do aplicativo
+
+| Projeto | Repositório | Uso |
+|---------|-------------|-----|
+| **Electron** | [github.com/electron/electron](https://github.com/electron/electron) | Runtime desktop |
+| **React** | [github.com/facebook/react](https://github.com/facebook/react) | Framework de interface |
+| **Vite** | [github.com/vitejs/vite](https://github.com/vitejs/vite) | Build tool e servidor de desenvolvimento |
+| **Tailwind CSS** | [github.com/tailwindlabs/tailwindcss](https://github.com/tailwindlabs/tailwindcss) | Estilos |
+| **WaveSurfer.js** | [github.com/katspaugh/wavesurfer.js](https://github.com/katspaugh/wavesurfer.js) | Visualização da forma de onda de áudio |
+| **Tabler Icons** | [github.com/tabler/tabler-icons](https://github.com/tabler/tabler-icons) | Ícones da interface |
+| **electron-builder** | [github.com/electron-userland/electron-builder](https://github.com/electron-userland/electron-builder) | Instalador Windows (NSIS) |
+
+### Fontes
+
+As 16 fontes embutidas vêm do [Google Fonts](https://fonts.google.com/), todas gratuitas para uso comercial — veja `src/global_config/fonts/LICENSES.md` para a lista completa e suas licenças.
 
 ---
 

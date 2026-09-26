@@ -102,6 +102,8 @@ function readConfig() {
     subtitle_persistence: '1',
     smart_subtitle: 'false',
     auto_line_wrap: 'false',
+    language: 'en',
+    theme: 'retro',
   };
   if (!fs.existsSync(configPath)) return defaults;
   try {
@@ -119,7 +121,7 @@ function readConfig() {
 
 function writeConfig(config) {
   fs.writeFileSync(configPath,
-    `[settings]\nthreshold = ${config.threshold}\nmargin = ${config.margin}\noutput_folder = ${config.output_folder}\noutput_format = ${config.output_format}\noutput_resolution = ${config.output_resolution || 'original'}\nsubtitles = ${config.subtitles}\nsubtitle_model = ${config.subtitle_model}\nsubtitle_position = ${config.subtitle_position}\nsubtitle_style = ${config.subtitle_style}\ngreen_screen = ${config.green_screen}\nburn_subtitles = ${config.burn_subtitles}\nwords_per_line = ${config.words_per_line}\nlines_count = ${config.lines_count}\nsubtitle_configs = ${config.subtitle_configs || '{}'}\nsubtitle_position_mode = ${config.subtitle_position_mode || 'fixed'}\nsubtitle_position_percent = ${config.subtitle_position_percent || '80'}\nsubtitle_persistence = ${config.subtitle_persistence || '1'}\nsmart_subtitle = ${config.smart_subtitle || 'false'}\nauto_line_wrap = ${config.auto_line_wrap || 'false'}\n`, 'utf-8');
+    `[settings]\nthreshold = ${config.threshold}\nmargin = ${config.margin}\noutput_folder = ${config.output_folder}\noutput_format = ${config.output_format}\noutput_resolution = ${config.output_resolution || 'original'}\nsubtitles = ${config.subtitles}\nsubtitle_model = ${config.subtitle_model}\nsubtitle_position = ${config.subtitle_position}\nsubtitle_style = ${config.subtitle_style}\ngreen_screen = ${config.green_screen}\nburn_subtitles = ${config.burn_subtitles}\nwords_per_line = ${config.words_per_line}\nlines_count = ${config.lines_count}\nsubtitle_configs = ${config.subtitle_configs || '{}'}\nsubtitle_position_mode = ${config.subtitle_position_mode || 'fixed'}\nsubtitle_position_percent = ${config.subtitle_position_percent || '80'}\nsubtitle_persistence = ${config.subtitle_persistence || '1'}\nsmart_subtitle = ${config.smart_subtitle || 'false'}\nauto_line_wrap = ${config.auto_line_wrap || 'false'}\nlanguage = ${config.language || 'en'}\ntheme = ${config.theme || 'retro'}\n`, 'utf-8');
 }
 
 let mainWindow;
@@ -139,12 +141,16 @@ function createWindow() {
     resizable: windowConfig.WINDOW_OPTIONS.resizable,
     frame: windowConfig.WINDOW_OPTIONS.frame,
     transparent: windowConfig.WINDOW_OPTIONS.transparent,
+    // Cor de pre-paint do tema + tema inicial sincrono no renderer
+    // (aplicado antes do primeiro paint, sem flash).
+    backgroundColor: config.theme === 'modern' ? '#17171c' : '#f5f0d0',
     ...(isDev ? { icon: path.join(devRoot, 'assets', 'novaLogo.ico') } : {}),
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
       webSecurity: false,
+      additionalArguments: [`--corgi-theme=${config.theme === 'modern' ? 'modern' : 'retro'}`],
     },
   });
 
@@ -167,7 +173,9 @@ app.on('before-quit', () => {
 ipcMain.handle('minimize', () => mainWindow?.minimize());
 ipcMain.handle('close', () => mainWindow?.close());
 ipcMain.handle('get-config', () => readConfig());
-ipcMain.handle('save-config', (e, config) => writeConfig(config));
+// Merge com o config do disco antes de gravar: chaves ausentes no payload
+// (ex.: theme, language) nao sao apagadas.
+ipcMain.handle('save-config', (e, config) => writeConfig({ ...readConfig(), ...config }));
 ipcMain.handle('get-fonts-path', () => getFontsDir());
 ipcMain.handle('path-exists', (e, targetPath) => {
   try { return fs.existsSync(targetPath); } catch { return false; }
@@ -453,7 +461,9 @@ ipcMain.handle('run-whisper-cli', async (event, { audioFile, model, output, lang
     '-f', wavFile,
     '-ojf',
     '-of', output,
-    '-l', language || 'pt',
+    // Idioma de transcricao segue o idioma da UI (padrao de primeira
+    // instalacao: en). Fallback: config persistido, depois en.
+    '-l', language || readConfig().language || 'en',
     '-pp',
   ];
 
